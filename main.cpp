@@ -2,6 +2,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <fstream>
 #include <iostream>
 #include <opencv2/opencv.hpp>
 
@@ -76,13 +77,36 @@ int yolov8_onnx(_Tp& cls, Mat& img, string& model_path) {
     return 0;
 }
 
+std::string trim(const std::string& str) {
+    std::size_t first = str.find_first_not_of(' ');
+    std::size_t last = str.find_last_not_of(' ');
+
+    if (first == std::string::npos || last == std::string::npos) {
+        return "";
+    }
+
+    return str.substr(first, last - first + 1);
+}
+
 int main(int argc, char* argv[]) {
     string img_path = "./images/1.jpg";
     string detect_model_path = "./models/best.onnx";
 
+    // a classes file, for example: "./model/classes.txt";
+    // in the file, on classes are listed line after line
+    // like: 
+    // ```
+    //      car
+    //      motercycle
+    // ```
+    string classes = ""; 
+
     int o = 0;
-    while ((o = getopt(argc, argv, "m:f:")) != -1) {
+    while ((o = getopt(argc, argv, "m:f:c:")) != -1) {
         switch (o) {
+            case 'c':
+                classes = optarg;
+                break;
             case 'm':
                 detect_model_path = optarg;
                 break;
@@ -90,7 +114,10 @@ int main(int argc, char* argv[]) {
                 img_path = optarg;
                 break;
             case '?':
-                std::cout << "Usage: Yolov8 -m path/to/model -f path/to/file" << std::endl;
+                std::cout << "Usage: Yolov8 " << std::endl;
+                std::cout << "-m path/to/model" << std::endl;
+                std::cout << "-f path/to/file" << std::endl;
+                std::cout << "-c path/to/classes .txt" << std::endl;
                 return 0;
         }
     }
@@ -105,6 +132,18 @@ int main(int argc, char* argv[]) {
     //	Yolov8 task_detect;
     //	Yolov8Seg task_segment;
     Yolov8Onnx task_detect_onnx;
+    std::ifstream ifs(classes);
+    if (!classes.empty() && ifs.is_open()) {
+        task_detect_onnx._className.clear();
+        std::string line;
+        while (std::getline(ifs, line)) {
+            line = trim(line);
+            if (!line.empty()) {
+                task_detect_onnx._className.push_back(line);
+            }
+        }
+        ifs.close();
+    }
     //	Yolov8SegOnnx task_segment_onnx;
 
     //	yolov8(task_detect,img,detect_model_path);    //Opencv detect
